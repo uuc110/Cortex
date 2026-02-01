@@ -25,6 +25,22 @@ export {
 
 export { createMemoryStore, EMBEDDING_DIM } from "./store.js";
 
+export {
+	computeTagMatchRatio,
+	applyTagBoost,
+	reRankWithTagBoost,
+	type ScoredResult,
+} from "./tag-boost.js";
+
+export {
+	isPrivate,
+	stripSensitive,
+	containsPrivateTag,
+	isFullyRedacted,
+	filterMemoriesForContext,
+	type FilterableMemory,
+} from "./privacy.js";
+
 // Auto-tagging (LLM-based tag generation)
 export {
 	generateTags,

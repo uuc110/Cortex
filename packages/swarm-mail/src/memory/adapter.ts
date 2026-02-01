@@ -99,6 +99,7 @@ import type { SwarmDb } from "../db/client.js";
 import { memories, memoryLinks, entities, relationships, memoryEntities, type MemoryLink, type Entity, type Relationship } from "../db/schema/memory.js";
 import { createMemoryStore, type Memory, type SearchResult } from "./store.js";
 import { makeOllamaLive, Ollama, type MemoryConfig } from "./ollama.js";
+import { filterMemoriesForContext, type FilterableMemory } from "./privacy.js";
 import type { LinkType } from "./memory-linking.js";
 import type { EntityType } from "./entity-extraction.js";
 import type { AutoTagResult as AutoTagServiceResult } from "./auto-tagger.js";
@@ -168,6 +169,8 @@ export interface FindOptions {
   readonly trackAccess?: boolean;
   /** Filter by decay tier: 'hot' (7d), 'warm' (30d), 'all' (default) */
   readonly decayTier?: "hot" | "warm" | "all";
+  /** Apply privacy filter to strip sensitive data and exclude private memories (default: true) */
+  readonly privacyFilter?: boolean;
 }
 
 /**
@@ -704,6 +707,7 @@ export function createMemoryAdapter(db: SwarmDb, config: MemoryConfig) {
         fields = "full",
         trackAccess = false,
         decayTier = "all",
+        privacyFilter = true,
       } = options;
 
       let results: SearchResult[];
@@ -734,6 +738,35 @@ export function createMemoryAdapter(db: SwarmDb, config: MemoryConfig) {
 
       // Sort by decayed score (descending)
       results.sort((a, b) => b.score - a.score);
+
+      // Privacy filter: strip sensitive data, exclude private-tagged memories
+      if (privacyFilter) {
+        const indexed = results.map((r, i) => {
+          const metaTags = Array.isArray(r.memory.metadata?.tags)
+            ? (r.memory.metadata.tags as string[]).join(",")
+            : "";
+          return {
+            id: r.memory.id,
+            tags: metaTags,
+            information: r.memory.content,
+            _idx: i,
+          };
+        });
+
+        const filtered = filterMemoriesForContext(indexed);
+        const kept = new Map(filtered.map((f) => [f._idx, f.information]));
+
+        results = results.reduce<SearchResult[]>((acc, r, i) => {
+          const sanitized = kept.get(i);
+          if (sanitized === undefined) return acc;
+          if (sanitized !== r.memory.content) {
+            acc.push({ ...r, memory: { ...r.memory, content: sanitized } });
+          } else {
+            acc.push(r);
+          }
+          return acc;
+        }, []);
+      }
 
       // Apply expand option (truncate content if not expanded)
       if (!expand) {

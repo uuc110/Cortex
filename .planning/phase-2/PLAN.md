@@ -130,7 +130,7 @@ Backport 2 remaining Cortex memory improvements into swarm-tools' hivemind.
 - [x] Decay tiers (hot/warm/cold) — already in upstream `store.ts` lines 64-95
 - [x] Access tracking (`last_accessed`, `access_count`) — already in upstream Drizzle schema + `store.ts` lines 390-404
 - [x] `trackAccess()` function — already in upstream `store.ts` lines 394-407
-- [ ] Tag 80/20 boost — `computeTagMatchRatio()` + wired into `find()`
-- [ ] Privacy XML filter — `privacy.ts` module + wired into `find()`
-- [ ] All existing memory tests still pass (zero regression)
-- [ ] Build succeeds
+- [x] Tag 80/20 boost — `computeTagMatchRatio()` + wired into `search()` and `ftsSearch()` in store.ts (24 tests)
+- [x] Privacy XML filter — `privacy.ts` module + wired into `find()` in adapter.ts (36 tests)
+- [x] All existing memory tests still pass (zero new regression — 67 failures all pre-existing from adapter.test.ts missing migration)
+- [x] Build succeeds

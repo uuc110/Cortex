@@ -30,6 +30,7 @@ import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import type { SwarmDb } from "../db/client.js";
 import { memories } from "../db/schema/memory.js";
 import { EMBEDDING_DIM } from "./ollama.js";
+import { reRankWithTagBoost, type ScoredResult } from "./tag-boost.js";
 
 // ============================================================================
 // Types
@@ -69,6 +70,10 @@ export interface SearchOptions {
   readonly trackAccess?: boolean;
   /** Filter by decay tier: 'hot' (7d), 'warm' (30d), 'all' (default) */
   readonly decayTier?: "hot" | "warm" | "all";
+  /** Original query text for tag 80/20 boost re-ranking */
+  readonly queryText?: string;
+  /** Tag boost ratio (0.0-1.0). Default 0.8 = 80% tag match weight */
+  readonly tagBoostRatio?: number;
 }
 
 /** Decay tier thresholds (in days) */
@@ -207,7 +212,7 @@ export function createMemoryStore(db: SwarmDb) {
       queryEmbedding: number[],
       options: SearchOptions = {}
     ): Promise<SearchResult[]> {
-      const { limit = 10, threshold = 0.3, collection, trackAccess: shouldTrack = false, decayTier = "all" } = options;
+      const { limit = 10, threshold = 0.3, collection, trackAccess: shouldTrack = false, decayTier = "all", queryText, tagBoostRatio } = options;
       const vectorStr = JSON.stringify(queryEmbedding);
 
       // Use vector_top_k for efficient ANN search via the vector index
@@ -241,6 +246,7 @@ export function createMemoryStore(db: SwarmDb) {
         distance: number;
         access_count: string;
         last_accessed: string;
+        tags: string;
       }>(sql`
         SELECT
           m.id,
@@ -251,6 +257,7 @@ export function createMemoryStore(db: SwarmDb) {
           m.decay_factor,
           m.access_count,
           m.last_accessed,
+          m.tags,
           vector_distance_cos(m.embedding, vector(${vectorStr})) as distance
         FROM vector_top_k('idx_memories_embedding', vector(${vectorStr}), ${limit * 2}) AS v
         JOIN memories m ON m.rowid = v.id
@@ -266,11 +273,34 @@ export function createMemoryStore(db: SwarmDb) {
         await this.trackAccess(results.map(r => r.id));
       }
 
-      return results.map((row) => ({
+      const searchResults = results.map((row) => ({
         memory: parseMemoryRow(row as unknown as typeof memories.$inferSelect),
-        score: 1 - row.distance, // Convert distance to similarity score
+        score: 1 - row.distance,
         matchType: "vector" as const,
+        tags: row.tags ?? "",
       }));
+
+      if (queryText && queryText.trim().length > 0) {
+        const scoredResults: ScoredResult[] = searchResults.map((r) => ({
+          id: r.memory.id,
+          score: r.score,
+          tags: r.tags,
+          content: r.memory.content,
+        }));
+
+        const reRanked = reRankWithTagBoost(scoredResults, queryText, tagBoostRatio);
+        const reRankedMap = new Map(reRanked.map((r, i) => [r.id, { score: r.score, index: i }]));
+
+        return searchResults
+          .map((r) => {
+            const ranked = reRankedMap.get(r.memory.id);
+            return { ...r, score: ranked?.score ?? r.score, _sortIndex: ranked?.index ?? 999 };
+          })
+          .sort((a, b) => a._sortIndex - b._sortIndex)
+          .map(({ _sortIndex, tags, ...rest }) => rest);
+      }
+
+      return searchResults.map(({ tags, ...rest }) => rest);
     },
 
     /**
@@ -287,7 +317,7 @@ export function createMemoryStore(db: SwarmDb) {
       searchQuery: string,
       options: SearchOptions = {}
     ): Promise<SearchResult[]> {
-      const { limit = 10, collection, trackAccess: shouldTrack = false, decayTier = "all" } = options;
+      const { limit = 10, collection, trackAccess: shouldTrack = false, decayTier = "all", queryText, tagBoostRatio } = options;
 
       // Defense in depth: graceful degradation at store layer
       if (!searchQuery || typeof searchQuery !== 'string') {
@@ -317,6 +347,7 @@ export function createMemoryStore(db: SwarmDb) {
         created_at: string;
         decay_factor: number;
         score: number;
+        tags: string;
       }>(sql`
         SELECT
           m.id,
@@ -325,6 +356,7 @@ export function createMemoryStore(db: SwarmDb) {
           m.collection,
           m.created_at,
           m.decay_factor,
+          m.tags,
           fts.rank as score
         FROM memories_fts fts
         JOIN memories m ON m.rowid = fts.rowid
@@ -341,11 +373,35 @@ export function createMemoryStore(db: SwarmDb) {
         await this.trackAccess(results.map(r => r.id));
       }
 
-      return results.map((row) => ({
+      const effectiveQueryText = queryText ?? searchQuery;
+      const searchResults = results.map((row) => ({
         memory: parseMemoryRow(row as unknown as typeof memories.$inferSelect),
-        score: Math.abs(row.score), // FTS5 rank is negative, normalize
+        score: Math.abs(row.score),
         matchType: "fts" as const,
+        tags: row.tags ?? "",
       }));
+
+      if (effectiveQueryText && effectiveQueryText.trim().length > 0) {
+        const scoredResults: ScoredResult[] = searchResults.map((r) => ({
+          id: r.memory.id,
+          score: r.score,
+          tags: r.tags,
+          content: r.memory.content,
+        }));
+
+        const reRanked = reRankWithTagBoost(scoredResults, effectiveQueryText, tagBoostRatio);
+        const reRankedMap = new Map(reRanked.map((r, i) => [r.id, { score: r.score, index: i }]));
+
+        return searchResults
+          .map((r) => {
+            const ranked = reRankedMap.get(r.memory.id);
+            return { ...r, score: ranked?.score ?? r.score, _sortIndex: ranked?.index ?? 999 };
+          })
+          .sort((a, b) => a._sortIndex - b._sortIndex)
+          .map(({ _sortIndex, tags, ...rest }) => rest);
+      }
+
+      return searchResults.map(({ tags, ...rest }) => rest);
     },
 
     /**

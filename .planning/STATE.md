@@ -4,14 +4,14 @@
 
 - **Phase:** 2 — Memory Enhancement
 - **Plan:** `.planning/phase-2/PLAN.md`
-- **Status:** 🔄 In Progress
+- **Status:** ✅ Complete
 
 ## Progress
 
 | Phase | Name | Status | Epic ID |
 |-------|------|--------|---------|
 | 1 | Fork & Stabilize | ✅ Complete | `cortex-rxxnfk-ml37mq3pjyn` |
-| 2 | Memory Enhancement | 🔄 In Progress | `cortex-rxxnfk-ml37mwrbwz8` |
+| 2 | Memory Enhancement | ✅ Complete | `cortex-rxxnfk-ml37mwrbwz8` |
 | 3 | Beads Bridge | Not Started | `cortex-rxxnfk-ml37n00tywt` |
 | 4 | GSD Integration | Not Started | `cortex-rxxnfk-ml37n3mczeb` |
 | 5 | Queen/Worker Protocol | Not Started | `cortex-rxxnfk-ml37n73640h` |
@@ -21,7 +21,7 @@
 | Milestone | Target | Status |
 |-----------|--------|--------|
 | Fork Ready | Week 1 | ✅ Complete |
-| Smart Memory | Week 2 | 🔄 In Progress |
+| Smart Memory | Week 2 | ✅ Complete |
 | Task Graph | Week 3 | Pending |
 | Structured Execution | Week 4 | Pending |
 | Full Protocol | Week 5 | Pending |
@@ -33,6 +33,7 @@
 | 2026-02-01 | init | Project initialized, fork plan docs created (13 files), PROJECT.md + config.json + ROADMAP.md created |
 | 2026-02-01 | phase-1 | Phase 1 executed: verified build, added 27 event schemas (Beads/GSD/Queen-Worker), added v11 migration (task_mapping, dep_mapping, label_mapping tables), 268 new tests pass, 0 regressions. Task 4 (rename) skipped by user decision. Task 5 (CI) already existed upstream. |
 | 2026-02-01 | phase-2-plan | Phase 2 planning: deep discovery found 60% already upstream (decay tiers, access tracking, trackAccess). Only tag 80/20 boost and privacy XML filter remain. Plan created with 3 tasks. |
+| 2026-02-01 | phase-2-impl | Phase 2 executed: tag 80/20 boost (24 tests), privacy XML filter (36 tests), wired both into adapter.ts find(). 60 new tests, 0 regressions. Build passes. |
 
 ## Decisions
 
@@ -45,4 +46,4 @@
 
 ## Last Updated
 
-2026-02-01T12:00:00.000Z
+2026-02-01T14:00:00.000Z
