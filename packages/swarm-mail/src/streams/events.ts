@@ -692,6 +692,282 @@ export const ValidationCompletedEventSchema = BaseEventSchema.extend({
 });
 
 // ============================================================================
+// Beads Bridge Events (Cortex Fork)
+// ============================================================================
+
+export const BeadsTaskCreatedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_task_created"),
+  bead_id: z.string(),
+  cell_id: z.string(),
+  title: z.string(),
+  issue_type: z.enum(["bug", "feature", "task", "epic", "chore"]).optional(),
+  priority: z.number().min(0).max(3).optional(),
+  parent_bead_id: z.string().optional(),
+  epic_id: z.string().optional(),
+});
+
+export const BeadsDepAddedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_dep_added"),
+  source_bead_id: z.string(),
+  target_bead_id: z.string(),
+  dep_type: z.enum([
+    "blocks", "blocked-by", "depends-on", "dependency-of",
+    "parent", "child", "relates-to", "duplicates", "duplicated-by",
+    "causes", "caused-by", "requires", "required-by",
+    "tests", "tested-by", "implements", "implemented-by", "references",
+  ]),
+  epic_id: z.string().optional(),
+});
+
+export const BeadsDepRemovedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_dep_removed"),
+  source_bead_id: z.string(),
+  target_bead_id: z.string(),
+  dep_type: z.enum([
+    "blocks", "blocked-by", "depends-on", "dependency-of",
+    "parent", "child", "relates-to", "duplicates", "duplicated-by",
+    "causes", "caused-by", "requires", "required-by",
+    "tests", "tested-by", "implements", "implemented-by", "references",
+  ]),
+  epic_id: z.string().optional(),
+});
+
+export const BeadsStatusChangedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_status_changed"),
+  bead_id: z.string(),
+  old_status: z.string(),
+  new_status: z.string(),
+  reason: z.string().optional(),
+  changed_by: z.string().optional(),
+});
+
+export const BeadsReadyChangedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_ready_changed"),
+  bead_ids: z.array(z.string()),
+  ready_count: z.number().int().min(0),
+  blocked_count: z.number().int().min(0),
+  epic_id: z.string().optional(),
+});
+
+export const BeadsClosedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_closed"),
+  bead_id: z.string(),
+  reason: z.string().optional(),
+  commit_sha: z.string().optional(),
+  duration_ms: z.number().int().min(0).optional(),
+  epic_id: z.string().optional(),
+});
+
+export const BeadsSyncCompletedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_sync_completed"),
+  beads_synced: z.number().int().min(0),
+  conflicts: z.number().int().min(0).default(0),
+  duration_ms: z.number().int().min(0).optional(),
+});
+
+export const BeadsMappingCreatedEventSchema = BaseEventSchema.extend({
+  type: z.literal("beads_mapping_created"),
+  cell_id: z.string(),
+  bead_id: z.string(),
+  epic_bead_id: z.string().optional(),
+  mapping_type: z.enum(["auto", "manual"]).default("auto"),
+});
+
+// ============================================================================
+// GSD Integration Events (Cortex Fork)
+// ============================================================================
+
+export const GsdPlanCreatedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_plan_created"),
+  plan_id: z.string(),
+  bead_id: z.string().optional(),
+  epic_id: z.string().optional(),
+  plan_path: z.string(),
+  task_count: z.number().int().min(0),
+  wave_count: z.number().int().min(0),
+  autonomous: z.boolean().default(false),
+});
+
+export const GsdWaveStartedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_wave_started"),
+  wave_number: z.number().int().min(1),
+  epic_id: z.string().optional(),
+  task_count: z.number().int().min(0),
+  parallel_workers: z.number().int().min(0),
+  files_in_scope: z.array(z.string()).optional(),
+});
+
+export const GsdWaveCompletedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_wave_completed"),
+  wave_number: z.number().int().min(1),
+  epic_id: z.string().optional(),
+  tasks_completed: z.number().int().min(0),
+  tasks_failed: z.number().int().min(0).default(0),
+  duration_ms: z.number().int().min(0).optional(),
+});
+
+export const GsdTaskExecutedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_task_executed"),
+  task_name: z.string(),
+  bead_id: z.string().optional(),
+  epic_id: z.string().optional(),
+  wave_number: z.number().int().min(1).optional(),
+  files_modified: z.array(z.string()).optional(),
+  commit_sha: z.string().optional(),
+  success: z.boolean(),
+});
+
+export const GsdVerificationRunEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_verification_run"),
+  epic_id: z.string().optional(),
+  phase_num: z.number().int().min(1).optional(),
+  verification_type: z.enum(["task", "phase"]),
+  must_haves_checked: z.number().int().min(0).default(0),
+  artifacts_checked: z.number().int().min(0).default(0),
+  key_links_checked: z.number().int().min(0).default(0),
+});
+
+export const GsdVerificationPassedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_verification_passed"),
+  epic_id: z.string().optional(),
+  phase_num: z.number().int().min(1).optional(),
+  must_haves_passed: z.number().int().min(0),
+  artifacts_passed: z.number().int().min(0),
+  key_links_passed: z.number().int().min(0),
+  total_checks: z.number().int().min(0),
+});
+
+export const GsdVerificationFailedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_verification_failed"),
+  epic_id: z.string().optional(),
+  phase_num: z.number().int().min(1).optional(),
+  failures: z.array(z.string()),
+  fix_tasks_created: z.number().int().min(0).default(0),
+  retry_count: z.number().int().min(0).default(0),
+});
+
+export const GsdStateUpdatedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_state_updated"),
+  current_phase: z.number().int().min(1).optional(),
+  current_wave: z.number().int().min(1).optional(),
+  tasks_completed: z.number().int().min(0).default(0),
+  tasks_remaining: z.number().int().min(0).default(0),
+});
+
+export const GsdCheckpointGateEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_checkpoint_gate"),
+  epic_id: z.string().optional(),
+  gate_type: z.enum(["human-verify", "decision", "human-action"]),
+  description: z.string(),
+  response: z.string().optional(),
+});
+
+export const GsdRoadmapPhaseStartedEventSchema = BaseEventSchema.extend({
+  type: z.literal("gsd_roadmap_phase_started"),
+  phase_num: z.number().int().min(1),
+  phase_name: z.string(),
+  epic_id: z.string().optional(),
+  acceptance_criteria: z.array(z.string()).optional(),
+});
+
+// ============================================================================
+// Queen/Worker Protocol Events (Cortex Fork)
+// ============================================================================
+
+export const QueenDecisionMadeEventSchema = BaseEventSchema.extend({
+  type: z.literal("queen_decision_made"),
+  epic_id: z.string(),
+  decision_type: z.enum([
+    "approve_discovery", "reject_discovery", "resolve_conflict",
+    "promote_learning", "assign_task",
+  ]),
+  bead_id: z.string().optional(),
+  worker_id: z.string().optional(),
+  rationale: z.string().optional(),
+});
+
+export const QueenReviewCompletedEventSchema = BaseEventSchema.extend({
+  type: z.literal("queen_review_completed"),
+  epic_id: z.string(),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  verdict: z.enum(["approved", "needs_changes", "blocked"]),
+  issues: z.array(z.string()).optional(),
+  attempt_number: z.number().int().min(1).default(1),
+});
+
+export const QueenLearningPromotedEventSchema = BaseEventSchema.extend({
+  type: z.literal("queen_learning_promoted"),
+  memory_id: z.string(),
+  from_tier: z.literal("short_term"),
+  to_tier: z.literal("long_term"),
+  reason: z.string().optional(),
+  phase_num: z.number().int().min(1).optional(),
+});
+
+export const WorkerStatusUpdateEventSchema = BaseEventSchema.extend({
+  type: z.literal("worker_status_update"),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  status: z.enum(["in_progress", "stuck", "blocked", "done"]),
+  percent_complete: z.number().min(0).max(100).optional(),
+  blockers: z.array(z.string()).optional(),
+  files: z.array(z.string()).optional(),
+});
+
+export const WorkerDiscoveryEventSchema = BaseEventSchema.extend({
+  type: z.literal("worker_discovery"),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  child_bead_id: z.string().optional(),
+  discovery_title: z.string(),
+  suggested_priority: z.number().min(0).max(3).optional(),
+  description: z.string().optional(),
+});
+
+export const WorkerHelpRequestEventSchema = BaseEventSchema.extend({
+  type: z.literal("worker_help_request"),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  question: z.string(),
+  what_tried: z.array(z.string()).optional(),
+  options: z.array(z.string()).optional(),
+  recommendation: z.string().optional(),
+});
+
+export const WorkerDecisionRequestEventSchema = BaseEventSchema.extend({
+  type: z.literal("worker_decision_request"),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  question: z.string(),
+  options: z.array(z.string()).optional(),
+  pros_cons: z.string().optional(),
+  recommendation: z.string().optional(),
+});
+
+export const WorkerLifecycleEventSchema = BaseEventSchema.extend({
+  type: z.literal("worker_lifecycle_event"),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  phase: z.enum([
+    "pickup", "orient", "plan", "execute", "verify", "learn", "report", "close",
+  ]),
+  duration_ms: z.number().int().min(0).optional(),
+});
+
+export const WorkerGuardrailViolationEventSchema = BaseEventSchema.extend({
+  type: z.literal("worker_guardrail_violation"),
+  bead_id: z.string(),
+  worker_id: z.string(),
+  violation_type: z.enum([
+    "cross_bead_mutation", "epic_creation", "scope_change",
+    "memory_promotion", "reservation_override",
+  ]),
+  attempted_action: z.string(),
+  blocked: z.boolean().default(true),
+});
+
+// ============================================================================
 // Union Type
 // ============================================================================
 
@@ -765,6 +1041,36 @@ export const AgentEventSchema = z.discriminatedUnion("type", [
   ValidationStartedEventSchema,
   ValidationIssueEventSchema,
   ValidationCompletedEventSchema,
+  // Beads Bridge events (Cortex)
+  BeadsTaskCreatedEventSchema,
+  BeadsDepAddedEventSchema,
+  BeadsDepRemovedEventSchema,
+  BeadsStatusChangedEventSchema,
+  BeadsReadyChangedEventSchema,
+  BeadsClosedEventSchema,
+  BeadsSyncCompletedEventSchema,
+  BeadsMappingCreatedEventSchema,
+  // GSD Integration events (Cortex)
+  GsdPlanCreatedEventSchema,
+  GsdWaveStartedEventSchema,
+  GsdWaveCompletedEventSchema,
+  GsdTaskExecutedEventSchema,
+  GsdVerificationRunEventSchema,
+  GsdVerificationPassedEventSchema,
+  GsdVerificationFailedEventSchema,
+  GsdStateUpdatedEventSchema,
+  GsdCheckpointGateEventSchema,
+  GsdRoadmapPhaseStartedEventSchema,
+  // Queen/Worker Protocol events (Cortex)
+  QueenDecisionMadeEventSchema,
+  QueenReviewCompletedEventSchema,
+  QueenLearningPromotedEventSchema,
+  WorkerStatusUpdateEventSchema,
+  WorkerDiscoveryEventSchema,
+  WorkerHelpRequestEventSchema,
+  WorkerDecisionRequestEventSchema,
+  WorkerLifecycleEventSchema,
+  WorkerGuardrailViolationEventSchema,
 ]);
 
 export type AgentEvent = z.infer<typeof AgentEventSchema>;
@@ -835,6 +1141,36 @@ export type CoordinatorDecisionEvent = z.infer<typeof CoordinatorDecisionEventSc
 export type CoordinatorViolationEvent = z.infer<typeof CoordinatorViolationEventSchema>;
 export type CoordinatorOutcomeEvent = z.infer<typeof CoordinatorOutcomeEventSchema>;
 export type CoordinatorCompactionEvent = z.infer<typeof CoordinatorCompactionEventSchema>;
+// Beads Bridge event types (Cortex)
+export type BeadsTaskCreatedEvent = z.infer<typeof BeadsTaskCreatedEventSchema>;
+export type BeadsDepAddedEvent = z.infer<typeof BeadsDepAddedEventSchema>;
+export type BeadsDepRemovedEvent = z.infer<typeof BeadsDepRemovedEventSchema>;
+export type BeadsStatusChangedEvent = z.infer<typeof BeadsStatusChangedEventSchema>;
+export type BeadsReadyChangedEvent = z.infer<typeof BeadsReadyChangedEventSchema>;
+export type BeadsClosedEvent = z.infer<typeof BeadsClosedEventSchema>;
+export type BeadsSyncCompletedEvent = z.infer<typeof BeadsSyncCompletedEventSchema>;
+export type BeadsMappingCreatedEvent = z.infer<typeof BeadsMappingCreatedEventSchema>;
+// GSD Integration event types (Cortex)
+export type GsdPlanCreatedEvent = z.infer<typeof GsdPlanCreatedEventSchema>;
+export type GsdWaveStartedEvent = z.infer<typeof GsdWaveStartedEventSchema>;
+export type GsdWaveCompletedEvent = z.infer<typeof GsdWaveCompletedEventSchema>;
+export type GsdTaskExecutedEvent = z.infer<typeof GsdTaskExecutedEventSchema>;
+export type GsdVerificationRunEvent = z.infer<typeof GsdVerificationRunEventSchema>;
+export type GsdVerificationPassedEvent = z.infer<typeof GsdVerificationPassedEventSchema>;
+export type GsdVerificationFailedEvent = z.infer<typeof GsdVerificationFailedEventSchema>;
+export type GsdStateUpdatedEvent = z.infer<typeof GsdStateUpdatedEventSchema>;
+export type GsdCheckpointGateEvent = z.infer<typeof GsdCheckpointGateEventSchema>;
+export type GsdRoadmapPhaseStartedEvent = z.infer<typeof GsdRoadmapPhaseStartedEventSchema>;
+// Queen/Worker Protocol event types (Cortex)
+export type QueenDecisionMadeEvent = z.infer<typeof QueenDecisionMadeEventSchema>;
+export type QueenReviewCompletedEvent = z.infer<typeof QueenReviewCompletedEventSchema>;
+export type QueenLearningPromotedEvent = z.infer<typeof QueenLearningPromotedEventSchema>;
+export type WorkerStatusUpdateEvent = z.infer<typeof WorkerStatusUpdateEventSchema>;
+export type WorkerDiscoveryEvent = z.infer<typeof WorkerDiscoveryEventSchema>;
+export type WorkerHelpRequestEvent = z.infer<typeof WorkerHelpRequestEventSchema>;
+export type WorkerDecisionRequestEvent = z.infer<typeof WorkerDecisionRequestEventSchema>;
+export type WorkerLifecycleEvent = z.infer<typeof WorkerLifecycleEventSchema>;
+export type WorkerGuardrailViolationEvent = z.infer<typeof WorkerGuardrailViolationEventSchema>;
 
 // ============================================================================
 // Session State Types

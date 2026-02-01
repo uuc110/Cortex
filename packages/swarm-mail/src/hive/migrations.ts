@@ -624,6 +624,115 @@ export const sessionsMigrationLibSQL: Migration = {
 };
 
 /**
+ * Migration v11: Add Cortex mapping tables (task_mapping, dep_mapping, label_mapping)
+ *
+ * These tables bridge Cortex IDs to Beads IDs and cache sync state.
+ * - task_mapping: Core cortex_id ↔ bead_id mapping with sync tracking
+ * - dep_mapping: Beads dependency edges with cortex-side metadata (18 dep types)
+ * - label_mapping: Cached beads labels for fast cortex-side filtering
+ *
+ * Design: Beads (bd) is source of truth. These tables are projections —
+ * denormalized caches that enable fast lookups without calling bd for every query.
+ *
+ * @see .planning/fork-plan/details/task-mapping-schema.md
+ */
+export const cortexMappingMigrationLibSQL: Migration = {
+	version: 11,
+	description: "Add Cortex mapping tables (task_mapping, dep_mapping, label_mapping)",
+	up: `
+    -- ========================================================================
+    -- Task Mapping Table (cortex_id ↔ bead_id bridge)
+    -- ========================================================================
+    CREATE TABLE IF NOT EXISTS task_mapping (
+      cortex_id     TEXT PRIMARY KEY,
+      bead_id       TEXT NOT NULL,
+      epic_bead_id  TEXT,
+      project_key   TEXT NOT NULL,
+      created_at    TEXT NOT NULL,
+      synced_at     TEXT,
+      sync_status   TEXT DEFAULT 'synced'
+        CHECK(sync_status IN ('synced', 'pending', 'conflict', 'orphaned')),
+      bead_status   TEXT,
+      bead_title    TEXT,
+      bead_priority INTEGER,
+      last_bead_update TEXT,
+      source        TEXT DEFAULT 'cortex'
+        CHECK(source IN ('cortex', 'beads', 'migration'))
+    );
+
+    -- Fast bead_id lookups (most common query path)
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_task_mapping_bead_id
+      ON task_mapping(bead_id);
+
+    -- Epic membership queries
+    CREATE INDEX IF NOT EXISTS idx_task_mapping_epic
+      ON task_mapping(epic_bead_id);
+
+    -- Project-scoped queries
+    CREATE INDEX IF NOT EXISTS idx_task_mapping_project
+      ON task_mapping(project_key);
+
+    -- Sync status filtering (find pending/conflict/orphaned rows)
+    CREATE INDEX IF NOT EXISTS idx_task_mapping_sync_status
+      ON task_mapping(sync_status);
+
+    -- Cached status for fast filtering without calling bd
+    CREATE INDEX IF NOT EXISTS idx_task_mapping_bead_status
+      ON task_mapping(project_key, bead_status);
+
+    -- ========================================================================
+    -- Dependency Mapping Table (beads dep edges with cortex metadata)
+    -- ========================================================================
+    CREATE TABLE IF NOT EXISTS dep_mapping (
+      id            TEXT PRIMARY KEY,
+      from_bead_id  TEXT NOT NULL,
+      to_bead_id    TEXT NOT NULL,
+      dep_type      TEXT NOT NULL,
+      project_key   TEXT NOT NULL,
+      created_at    TEXT NOT NULL,
+      synced_at     TEXT,
+
+      UNIQUE(from_bead_id, to_bead_id, dep_type)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_dep_mapping_from
+      ON dep_mapping(from_bead_id);
+
+    CREATE INDEX IF NOT EXISTS idx_dep_mapping_to
+      ON dep_mapping(to_bead_id);
+
+    CREATE INDEX IF NOT EXISTS idx_dep_mapping_type
+      ON dep_mapping(dep_type);
+
+    CREATE INDEX IF NOT EXISTS idx_dep_mapping_project
+      ON dep_mapping(project_key);
+
+    -- ========================================================================
+    -- Label Mapping Table (cached beads labels)
+    -- ========================================================================
+    CREATE TABLE IF NOT EXISTS label_mapping (
+      bead_id       TEXT NOT NULL,
+      label         TEXT NOT NULL,
+      project_key   TEXT NOT NULL,
+      synced_at     TEXT NOT NULL,
+
+      PRIMARY KEY(bead_id, label)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_label_mapping_label
+      ON label_mapping(label);
+
+    CREATE INDEX IF NOT EXISTS idx_label_mapping_project
+      ON label_mapping(project_key);
+  `,
+	down: `
+    DROP TABLE IF EXISTS label_mapping;
+    DROP TABLE IF EXISTS dep_mapping;
+    DROP TABLE IF EXISTS task_mapping;
+  `,
+};
+
+/**
  * All hive migrations in order (LibSQL version)
  */
 export const hiveMigrationsLibSQL: Migration[] = [
@@ -631,4 +740,5 @@ export const hiveMigrationsLibSQL: Migration[] = [
 	cellsViewMigrationLibSQL,
 	sessionsMigrationLibSQL,
 	beadsResultColumnsMigrationLibSQL,
+	cortexMappingMigrationLibSQL,
 ];

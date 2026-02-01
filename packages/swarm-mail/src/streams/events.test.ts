@@ -34,6 +34,33 @@ import {
   SwarmRecoveredEventSchema,
   CheckpointCreatedEventSchema,
   ContextCompactedEventSchema,
+  BeadsTaskCreatedEventSchema,
+  BeadsDepAddedEventSchema,
+  BeadsDepRemovedEventSchema,
+  BeadsStatusChangedEventSchema,
+  BeadsReadyChangedEventSchema,
+  BeadsClosedEventSchema,
+  BeadsSyncCompletedEventSchema,
+  BeadsMappingCreatedEventSchema,
+  GsdPlanCreatedEventSchema,
+  GsdWaveStartedEventSchema,
+  GsdWaveCompletedEventSchema,
+  GsdTaskExecutedEventSchema,
+  GsdVerificationRunEventSchema,
+  GsdVerificationPassedEventSchema,
+  GsdVerificationFailedEventSchema,
+  GsdStateUpdatedEventSchema,
+  GsdCheckpointGateEventSchema,
+  GsdRoadmapPhaseStartedEventSchema,
+  QueenDecisionMadeEventSchema,
+  QueenReviewCompletedEventSchema,
+  QueenLearningPromotedEventSchema,
+  WorkerStatusUpdateEventSchema,
+  WorkerDiscoveryEventSchema,
+  WorkerHelpRequestEventSchema,
+  WorkerDecisionRequestEventSchema,
+  WorkerLifecycleEventSchema,
+  WorkerGuardrailViolationEventSchema,
   createEvent,
   isEventType,
   type AgentEvent,
@@ -1119,7 +1146,6 @@ describe("Enhanced SwarmCheckpointedEvent", () => {
     expect(() =>
       SwarmCheckpointedEventSchema.parse({
         type: "swarm_checkpointed",
-        project_key: "/test",
         timestamp: Date.now(),
         ...baseCheckpoint,
         trigger: "invalid",
@@ -1275,7 +1301,6 @@ describe("CheckpointCreatedEvent", () => {
     expect(() =>
       CheckpointCreatedEventSchema.parse({
         type: "checkpoint_created",
-        project_key: "/test",
         timestamp: Date.now(),
         ...base,
         progress_percent: -1,
@@ -1286,7 +1311,6 @@ describe("CheckpointCreatedEvent", () => {
     expect(() =>
       CheckpointCreatedEventSchema.parse({
         type: "checkpoint_created",
-        project_key: "/test",
         timestamp: Date.now(),
         ...base,
         progress_percent: 101,
@@ -1380,7 +1404,6 @@ describe("ContextCompactedEvent", () => {
     expect(() =>
       ContextCompactedEventSchema.parse({
         type: "context_compacted",
-        project_key: "/test",
         timestamp: Date.now(),
         ...base,
         compression_ratio: 1.5,
@@ -1391,7 +1414,6 @@ describe("ContextCompactedEvent", () => {
     expect(() =>
       ContextCompactedEventSchema.parse({
         type: "context_compacted",
-        project_key: "/test",
         timestamp: Date.now(),
         ...base,
         compression_ratio: -0.1,
@@ -1618,6 +1640,2518 @@ describe("ValidationCompletedEventSchema", () => {
 });
 
 // ============================================================================
+// Beads Bridge Events Tests (Cortex)
+// ============================================================================
+
+describe("BeadsTaskCreatedEventSchema", () => {
+  it("validates a complete beads_task_created event", () => {
+    const event = {
+      type: "beads_task_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      cell_id: "cell-123",
+      title: "Fix auth bug",
+      issue_type: "bug",
+      priority: 2,
+      parent_bead_id: "bd-parent",
+      epic_id: "epic-123",
+    };
+    expect(() => BeadsTaskCreatedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects missing bead_id", () => {
+    const event = {
+      type: "beads_task_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      cell_id: "cell-123",
+      title: "Fix auth bug",
+    };
+    expect(() => BeadsTaskCreatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates issue_type enum values", () => {
+    const validIssueTypes = ["bug", "feature", "task", "epic", "chore"];
+    for (const issue_type of validIssueTypes) {
+      const event = {
+        type: "beads_task_created",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        bead_id: "bd-123",
+        cell_id: "cell-123",
+        title: "Test",
+        issue_type,
+      };
+      expect(() => BeadsTaskCreatedEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid issue_type value", () => {
+    const event = {
+      type: "beads_task_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      cell_id: "cell-123",
+      title: "Test",
+      issue_type: "story",
+    };
+    expect(() => BeadsTaskCreatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates priority bounds", () => {
+    const baseEvent = {
+      type: "beads_task_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      cell_id: "cell-123",
+      title: "Test",
+    };
+
+    expect(() =>
+      BeadsTaskCreatedEventSchema.parse({ ...baseEvent, priority: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      BeadsTaskCreatedEventSchema.parse({ ...baseEvent, priority: 3 }),
+    ).not.toThrow();
+
+    expect(() =>
+      BeadsTaskCreatedEventSchema.parse({ ...baseEvent, priority: -1 }),
+    ).toThrow();
+
+    expect(() =>
+      BeadsTaskCreatedEventSchema.parse({ ...baseEvent, priority: 4 }),
+    ).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_task_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      cell_id: "cell-123",
+      title: "Minimal",
+    };
+    expect(() => BeadsTaskCreatedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsDepAddedEventSchema", () => {
+  it("validates a complete beads_dep_added event", () => {
+    const event = {
+      type: "beads_dep_added",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      target_bead_id: "bd-2",
+      dep_type: "blocks",
+      epic_id: "epic-123",
+    };
+    expect(() => BeadsDepAddedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects missing source_bead_id", () => {
+    const event = {
+      type: "beads_dep_added",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      target_bead_id: "bd-2",
+      dep_type: "blocks",
+    };
+    expect(() => BeadsDepAddedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates dep_type enum values", () => {
+    const validDepTypes = [
+      "blocks",
+      "blocked-by",
+      "depends-on",
+      "dependency-of",
+      "parent",
+    ];
+    for (const dep_type of validDepTypes) {
+      const event = {
+        type: "beads_dep_added",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        source_bead_id: "bd-1",
+        target_bead_id: "bd-2",
+        dep_type,
+      };
+      expect(() => BeadsDepAddedEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid dep_type value", () => {
+    const event = {
+      type: "beads_dep_added",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      target_bead_id: "bd-2",
+      dep_type: "invalid",
+    };
+    expect(() => BeadsDepAddedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_dep_added",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      target_bead_id: "bd-2",
+      dep_type: "blocks",
+    };
+    expect(() => BeadsDepAddedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsDepRemovedEventSchema", () => {
+  it("validates a complete beads_dep_removed event", () => {
+    const event = {
+      type: "beads_dep_removed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      target_bead_id: "bd-2",
+      dep_type: "depends-on",
+      epic_id: "epic-123",
+    };
+    expect(() => BeadsDepRemovedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects missing target_bead_id", () => {
+    const event = {
+      type: "beads_dep_removed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      dep_type: "depends-on",
+    };
+    expect(() => BeadsDepRemovedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates dep_type enum values", () => {
+    const validDepTypes = [
+      "blocks",
+      "blocked-by",
+      "depends-on",
+      "dependency-of",
+      "child",
+    ];
+    for (const dep_type of validDepTypes) {
+      const event = {
+        type: "beads_dep_removed",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        source_bead_id: "bd-1",
+        target_bead_id: "bd-2",
+        dep_type,
+      };
+      expect(() => BeadsDepRemovedEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid dep_type value", () => {
+    const event = {
+      type: "beads_dep_removed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      target_bead_id: "bd-2",
+      dep_type: "invalid",
+    };
+    expect(() => BeadsDepRemovedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_dep_removed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      source_bead_id: "bd-1",
+      target_bead_id: "bd-2",
+      dep_type: "blocks",
+    };
+    expect(() => BeadsDepRemovedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsStatusChangedEventSchema", () => {
+  it("validates a complete beads_status_changed event", () => {
+    const event = {
+      type: "beads_status_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      old_status: "open",
+      new_status: "in_progress",
+      reason: "Work started",
+      changed_by: "BlueLake",
+    };
+    expect(() => BeadsStatusChangedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects missing bead_id", () => {
+    const event = {
+      type: "beads_status_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      old_status: "open",
+      new_status: "in_progress",
+    };
+    expect(() => BeadsStatusChangedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "beads_status_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      old_status: "open",
+      new_status: "closed",
+    };
+    const validTypes = ["beads_status_changed"];
+    for (const type of validTypes) {
+      expect(() =>
+        BeadsStatusChangedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "beads_status_change",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      old_status: "open",
+      new_status: "closed",
+    };
+    expect(() => BeadsStatusChangedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_status_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      old_status: "open",
+      new_status: "closed",
+    };
+    expect(() => BeadsStatusChangedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsReadyChangedEventSchema", () => {
+  it("validates a complete beads_ready_changed event", () => {
+    const event = {
+      type: "beads_ready_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_ids: ["bd-1", "bd-2"],
+      ready_count: 1,
+      blocked_count: 1,
+      epic_id: "epic-123",
+    };
+    expect(() => BeadsReadyChangedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects missing bead_ids", () => {
+    const event = {
+      type: "beads_ready_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      ready_count: 1,
+      blocked_count: 1,
+    };
+    expect(() => BeadsReadyChangedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "beads_ready_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_ids: ["bd-1"],
+      ready_count: 1,
+      blocked_count: 0,
+    };
+    const validTypes = ["beads_ready_changed"];
+    for (const type of validTypes) {
+      expect(() =>
+        BeadsReadyChangedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "beads_ready_change",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_ids: ["bd-1"],
+      ready_count: 1,
+      blocked_count: 0,
+    };
+    expect(() => BeadsReadyChangedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates ready_count and blocked_count bounds", () => {
+    const baseEvent = {
+      type: "beads_ready_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_ids: ["bd-1"],
+    };
+
+    expect(() =>
+      BeadsReadyChangedEventSchema.parse({
+        ...baseEvent,
+        ready_count: 0,
+        blocked_count: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      BeadsReadyChangedEventSchema.parse({
+        ...baseEvent,
+        ready_count: -1,
+        blocked_count: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      BeadsReadyChangedEventSchema.parse({
+        ...baseEvent,
+        ready_count: 0,
+        blocked_count: -1,
+      }),
+    ).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_ready_changed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_ids: ["bd-1"],
+      ready_count: 1,
+      blocked_count: 0,
+    };
+    expect(() => BeadsReadyChangedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsClosedEventSchema", () => {
+  it("validates a complete beads_closed event", () => {
+    const event = {
+      type: "beads_closed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      reason: "Done",
+      commit_sha: "abc123",
+      duration_ms: 1200,
+      epic_id: "epic-123",
+    };
+    expect(() => BeadsClosedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects missing bead_id", () => {
+    const event = {
+      type: "beads_closed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    expect(() => BeadsClosedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "beads_closed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+    };
+    const validTypes = ["beads_closed"];
+    for (const type of validTypes) {
+      expect(() => BeadsClosedEventSchema.parse({ ...baseEvent, type })).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "beads_close",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+    };
+    expect(() => BeadsClosedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates duration_ms bounds", () => {
+    const baseEvent = {
+      type: "beads_closed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+    };
+
+    expect(() =>
+      BeadsClosedEventSchema.parse({ ...baseEvent, duration_ms: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      BeadsClosedEventSchema.parse({ ...baseEvent, duration_ms: -1 }),
+    ).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_closed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+    };
+    expect(() => BeadsClosedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsSyncCompletedEventSchema", () => {
+  it("validates a complete beads_sync_completed event", () => {
+    const event = {
+      type: "beads_sync_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      beads_synced: 3,
+      conflicts: 1,
+      duration_ms: 500,
+    };
+    expect(() => BeadsSyncCompletedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default conflicts", () => {
+    const event = {
+      type: "beads_sync_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      beads_synced: 3,
+    };
+    const parsed = BeadsSyncCompletedEventSchema.parse(event);
+    expect(parsed.conflicts).toBe(0);
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "beads_sync_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      beads_synced: 1,
+    };
+    const validTypes = ["beads_sync_completed"];
+    for (const type of validTypes) {
+      expect(() =>
+        BeadsSyncCompletedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "beads_sync_complete",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      beads_synced: 1,
+    };
+    expect(() => BeadsSyncCompletedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates non-negative counts", () => {
+    const baseEvent = {
+      type: "beads_sync_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+
+    expect(() =>
+      BeadsSyncCompletedEventSchema.parse({
+        ...baseEvent,
+        beads_synced: 0,
+        conflicts: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      BeadsSyncCompletedEventSchema.parse({
+        ...baseEvent,
+        beads_synced: -1,
+        conflicts: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      BeadsSyncCompletedEventSchema.parse({
+        ...baseEvent,
+        beads_synced: 1,
+        conflicts: -1,
+      }),
+    ).toThrow();
+  });
+
+  it("validates duration_ms bounds", () => {
+    const baseEvent = {
+      type: "beads_sync_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      beads_synced: 1,
+    };
+
+    expect(() =>
+      BeadsSyncCompletedEventSchema.parse({ ...baseEvent, duration_ms: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      BeadsSyncCompletedEventSchema.parse({ ...baseEvent, duration_ms: -1 }),
+    ).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_sync_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      beads_synced: 1,
+    };
+    expect(() => BeadsSyncCompletedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("BeadsMappingCreatedEventSchema", () => {
+  it("validates a complete beads_mapping_created event", () => {
+    const event = {
+      type: "beads_mapping_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      cell_id: "cell-123",
+      bead_id: "bd-123",
+      epic_bead_id: "epic-123",
+      mapping_type: "manual",
+    };
+    expect(() => BeadsMappingCreatedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default mapping_type", () => {
+    const event = {
+      type: "beads_mapping_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      cell_id: "cell-123",
+      bead_id: "bd-123",
+    };
+    const parsed = BeadsMappingCreatedEventSchema.parse(event);
+    expect(parsed.mapping_type).toBe("auto");
+  });
+
+  it("validates mapping_type enum values", () => {
+    const validMappingTypes = ["auto", "manual"];
+    for (const mapping_type of validMappingTypes) {
+      const event = {
+        type: "beads_mapping_created",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        cell_id: "cell-123",
+        bead_id: "bd-123",
+        mapping_type,
+      };
+      expect(() => BeadsMappingCreatedEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid mapping_type value", () => {
+    const event = {
+      type: "beads_mapping_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      cell_id: "cell-123",
+      bead_id: "bd-123",
+      mapping_type: "linked",
+    };
+    expect(() => BeadsMappingCreatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("rejects missing cell_id", () => {
+    const event = {
+      type: "beads_mapping_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+    };
+    expect(() => BeadsMappingCreatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "beads_mapping_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      cell_id: "cell-123",
+      bead_id: "bd-123",
+    };
+    expect(() => BeadsMappingCreatedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+// ============================================================================
+// GSD Integration Events Tests (Cortex)
+// ============================================================================
+
+describe("GsdPlanCreatedEventSchema", () => {
+  it("validates a complete gsd_plan_created event", () => {
+    const event = {
+      type: "gsd_plan_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_id: "plan-123",
+      bead_id: "bd-123",
+      epic_id: "epic-123",
+      plan_path: "/plans/PLAN.md",
+      task_count: 3,
+      wave_count: 2,
+      autonomous: true,
+    };
+    expect(() => GsdPlanCreatedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default autonomous", () => {
+    const event = {
+      type: "gsd_plan_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_id: "plan-123",
+      plan_path: "/plans/PLAN.md",
+      task_count: 1,
+      wave_count: 1,
+    };
+    const parsed = GsdPlanCreatedEventSchema.parse(event);
+    expect(parsed.autonomous).toBe(false);
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_plan_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_id: "plan-123",
+      plan_path: "/plans/PLAN.md",
+      task_count: 1,
+      wave_count: 1,
+    };
+    const validTypes = ["gsd_plan_created"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdPlanCreatedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_plan_create",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_id: "plan-123",
+      plan_path: "/plans/PLAN.md",
+      task_count: 1,
+      wave_count: 1,
+    };
+    expect(() => GsdPlanCreatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates task_count and wave_count bounds", () => {
+    const baseEvent = {
+      type: "gsd_plan_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_id: "plan-123",
+      plan_path: "/plans/PLAN.md",
+    };
+
+    expect(() =>
+      GsdPlanCreatedEventSchema.parse({
+        ...baseEvent,
+        task_count: 0,
+        wave_count: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdPlanCreatedEventSchema.parse({
+        ...baseEvent,
+        task_count: -1,
+        wave_count: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      GsdPlanCreatedEventSchema.parse({
+        ...baseEvent,
+        task_count: 0,
+        wave_count: -1,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects missing plan_id", () => {
+    const event = {
+      type: "gsd_plan_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_path: "/plans/PLAN.md",
+      task_count: 1,
+      wave_count: 1,
+    };
+    expect(() => GsdPlanCreatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_plan_created",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      plan_id: "plan-123",
+      plan_path: "/plans/PLAN.md",
+      task_count: 1,
+      wave_count: 1,
+    };
+    expect(() => GsdPlanCreatedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdWaveStartedEventSchema", () => {
+  it("validates a complete gsd_wave_started event", () => {
+    const event = {
+      type: "gsd_wave_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      epic_id: "epic-123",
+      task_count: 3,
+      parallel_workers: 2,
+      files_in_scope: ["src/auth.ts"],
+    };
+    expect(() => GsdWaveStartedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_wave_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      task_count: 1,
+      parallel_workers: 1,
+    };
+    const validTypes = ["gsd_wave_started"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdWaveStartedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_wave_start",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      task_count: 1,
+      parallel_workers: 1,
+    };
+    expect(() => GsdWaveStartedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates wave_number bounds", () => {
+    const baseEvent = {
+      type: "gsd_wave_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_count: 1,
+      parallel_workers: 1,
+    };
+
+    expect(() =>
+      GsdWaveStartedEventSchema.parse({ ...baseEvent, wave_number: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdWaveStartedEventSchema.parse({ ...baseEvent, wave_number: 0 }),
+    ).toThrow();
+  });
+
+  it("validates non-negative counts", () => {
+    const baseEvent = {
+      type: "gsd_wave_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+    };
+
+    expect(() =>
+      GsdWaveStartedEventSchema.parse({
+        ...baseEvent,
+        task_count: 0,
+        parallel_workers: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdWaveStartedEventSchema.parse({
+        ...baseEvent,
+        task_count: -1,
+        parallel_workers: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      GsdWaveStartedEventSchema.parse({
+        ...baseEvent,
+        task_count: 0,
+        parallel_workers: -1,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects missing wave_number", () => {
+    const event = {
+      type: "gsd_wave_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_count: 1,
+      parallel_workers: 1,
+    };
+    expect(() => GsdWaveStartedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_wave_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      task_count: 1,
+      parallel_workers: 1,
+    };
+    expect(() => GsdWaveStartedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdWaveCompletedEventSchema", () => {
+  it("validates a complete gsd_wave_completed event", () => {
+    const event = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 2,
+      epic_id: "epic-123",
+      tasks_completed: 3,
+      tasks_failed: 1,
+      duration_ms: 1200,
+    };
+    expect(() => GsdWaveCompletedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default tasks_failed", () => {
+    const event = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      tasks_completed: 2,
+    };
+    const parsed = GsdWaveCompletedEventSchema.parse(event);
+    expect(parsed.tasks_failed).toBe(0);
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      tasks_completed: 1,
+    };
+    const validTypes = ["gsd_wave_completed"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdWaveCompletedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_wave_complete",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      tasks_completed: 1,
+    };
+    expect(() => GsdWaveCompletedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates wave_number bounds", () => {
+    const baseEvent = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      tasks_completed: 1,
+    };
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({ ...baseEvent, wave_number: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({ ...baseEvent, wave_number: 0 }),
+    ).toThrow();
+  });
+
+  it("validates non-negative counts", () => {
+    const baseEvent = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+    };
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({
+        ...baseEvent,
+        tasks_completed: 0,
+        tasks_failed: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({
+        ...baseEvent,
+        tasks_completed: -1,
+        tasks_failed: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({
+        ...baseEvent,
+        tasks_completed: 1,
+        tasks_failed: -1,
+      }),
+    ).toThrow();
+  });
+
+  it("validates duration_ms bounds", () => {
+    const baseEvent = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      tasks_completed: 1,
+    };
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({ ...baseEvent, duration_ms: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdWaveCompletedEventSchema.parse({ ...baseEvent, duration_ms: -1 }),
+    ).toThrow();
+  });
+
+  it("rejects missing tasks_completed", () => {
+    const event = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+    };
+    expect(() => GsdWaveCompletedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_wave_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      wave_number: 1,
+      tasks_completed: 1,
+    };
+    expect(() => GsdWaveCompletedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdTaskExecutedEventSchema", () => {
+  it("validates a complete gsd_task_executed event", () => {
+    const event = {
+      type: "gsd_task_executed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_name: "Write tests",
+      bead_id: "bd-123",
+      epic_id: "epic-123",
+      wave_number: 1,
+      files_modified: ["src/test.ts"],
+      commit_sha: "abc123",
+      success: true,
+    };
+    expect(() => GsdTaskExecutedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_task_executed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_name: "Test",
+      success: true,
+    };
+    const validTypes = ["gsd_task_executed"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdTaskExecutedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_task_execute",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_name: "Test",
+      success: true,
+    };
+    expect(() => GsdTaskExecutedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates wave_number bounds", () => {
+    const baseEvent = {
+      type: "gsd_task_executed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_name: "Test",
+      success: true,
+    };
+
+    expect(() =>
+      GsdTaskExecutedEventSchema.parse({ ...baseEvent, wave_number: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdTaskExecutedEventSchema.parse({ ...baseEvent, wave_number: 0 }),
+    ).toThrow();
+  });
+
+  it("rejects missing task_name", () => {
+    const event = {
+      type: "gsd_task_executed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      success: true,
+    };
+    expect(() => GsdTaskExecutedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_task_executed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      task_name: "Test",
+      success: false,
+    };
+    expect(() => GsdTaskExecutedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdVerificationRunEventSchema", () => {
+  it("validates a complete gsd_verification_run event", () => {
+    const event = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      phase_num: 1,
+      verification_type: "task",
+      must_haves_checked: 2,
+      artifacts_checked: 1,
+      key_links_checked: 1,
+    };
+    expect(() => GsdVerificationRunEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default counts", () => {
+    const event = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      verification_type: "phase",
+    };
+    const parsed = GsdVerificationRunEventSchema.parse(event);
+    expect(parsed.must_haves_checked).toBe(0);
+    expect(parsed.artifacts_checked).toBe(0);
+    expect(parsed.key_links_checked).toBe(0);
+  });
+
+  it("validates verification_type enum values", () => {
+    const validTypes = ["task", "phase"];
+    for (const verification_type of validTypes) {
+      const event = {
+        type: "gsd_verification_run",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        verification_type,
+      };
+      expect(() => GsdVerificationRunEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid verification_type value", () => {
+    const event = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      verification_type: "invalid",
+    };
+    expect(() => GsdVerificationRunEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates phase_num bounds", () => {
+    const baseEvent = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      verification_type: "task",
+    };
+
+    expect(() =>
+      GsdVerificationRunEventSchema.parse({ ...baseEvent, phase_num: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdVerificationRunEventSchema.parse({ ...baseEvent, phase_num: 0 }),
+    ).toThrow();
+  });
+
+  it("validates non-negative counts", () => {
+    const baseEvent = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      verification_type: "task",
+    };
+
+    expect(() =>
+      GsdVerificationRunEventSchema.parse({
+        ...baseEvent,
+        must_haves_checked: 0,
+        artifacts_checked: 0,
+        key_links_checked: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdVerificationRunEventSchema.parse({
+        ...baseEvent,
+        must_haves_checked: -1,
+        artifacts_checked: 0,
+        key_links_checked: 0,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects missing verification_type", () => {
+    const event = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    expect(() => GsdVerificationRunEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_verification_run",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      verification_type: "task",
+    };
+    expect(() => GsdVerificationRunEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdVerificationPassedEventSchema", () => {
+  it("validates a complete gsd_verification_passed event", () => {
+    const event = {
+      type: "gsd_verification_passed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      phase_num: 1,
+      must_haves_passed: 2,
+      artifacts_passed: 1,
+      key_links_passed: 1,
+      total_checks: 4,
+    };
+    expect(() => GsdVerificationPassedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_verification_passed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      must_haves_passed: 1,
+      artifacts_passed: 1,
+      key_links_passed: 1,
+      total_checks: 3,
+    };
+    const validTypes = ["gsd_verification_passed"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdVerificationPassedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_verification_pass",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      must_haves_passed: 1,
+      artifacts_passed: 1,
+      key_links_passed: 1,
+      total_checks: 3,
+    };
+    expect(() => GsdVerificationPassedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates phase_num bounds", () => {
+    const baseEvent = {
+      type: "gsd_verification_passed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      must_haves_passed: 1,
+      artifacts_passed: 1,
+      key_links_passed: 1,
+      total_checks: 3,
+    };
+
+    expect(() =>
+      GsdVerificationPassedEventSchema.parse({ ...baseEvent, phase_num: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdVerificationPassedEventSchema.parse({ ...baseEvent, phase_num: 0 }),
+    ).toThrow();
+  });
+
+  it("validates non-negative counts", () => {
+    const baseEvent = {
+      type: "gsd_verification_passed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      total_checks: 0,
+      must_haves_passed: 0,
+      artifacts_passed: 0,
+      key_links_passed: 0,
+    };
+
+    expect(() => GsdVerificationPassedEventSchema.parse(baseEvent)).not.toThrow();
+
+    expect(() =>
+      GsdVerificationPassedEventSchema.parse({
+        ...baseEvent,
+        must_haves_passed: -1,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects missing total_checks", () => {
+    const event = {
+      type: "gsd_verification_passed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      must_haves_passed: 1,
+      artifacts_passed: 1,
+      key_links_passed: 1,
+    };
+    expect(() => GsdVerificationPassedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_verification_passed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      must_haves_passed: 1,
+      artifacts_passed: 1,
+      key_links_passed: 1,
+      total_checks: 3,
+    };
+    expect(() => GsdVerificationPassedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdVerificationFailedEventSchema", () => {
+  it("validates a complete gsd_verification_failed event", () => {
+    const event = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      phase_num: 1,
+      failures: ["missing tests"],
+      fix_tasks_created: 2,
+      retry_count: 1,
+    };
+    expect(() => GsdVerificationFailedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default fix_tasks_created and retry_count", () => {
+    const event = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      failures: ["missing tests"],
+    };
+    const parsed = GsdVerificationFailedEventSchema.parse(event);
+    expect(parsed.fix_tasks_created).toBe(0);
+    expect(parsed.retry_count).toBe(0);
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      failures: ["missing tests"],
+    };
+    const validTypes = ["gsd_verification_failed"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdVerificationFailedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_verification_fail",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      failures: ["missing tests"],
+    };
+    expect(() => GsdVerificationFailedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates phase_num bounds", () => {
+    const baseEvent = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      failures: ["missing tests"],
+    };
+
+    expect(() =>
+      GsdVerificationFailedEventSchema.parse({ ...baseEvent, phase_num: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdVerificationFailedEventSchema.parse({ ...baseEvent, phase_num: 0 }),
+    ).toThrow();
+  });
+
+  it("validates non-negative counts", () => {
+    const baseEvent = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      failures: ["missing tests"],
+    };
+
+    expect(() =>
+      GsdVerificationFailedEventSchema.parse({
+        ...baseEvent,
+        fix_tasks_created: 0,
+        retry_count: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdVerificationFailedEventSchema.parse({
+        ...baseEvent,
+        fix_tasks_created: -1,
+        retry_count: 0,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects missing failures", () => {
+    const event = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    expect(() => GsdVerificationFailedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_verification_failed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      failures: ["missing tests"],
+    };
+    expect(() => GsdVerificationFailedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdStateUpdatedEventSchema", () => {
+  it("validates a complete gsd_state_updated event", () => {
+    const event = {
+      type: "gsd_state_updated",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      current_phase: 1,
+      current_wave: 2,
+      tasks_completed: 3,
+      tasks_remaining: 1,
+    };
+    expect(() => GsdStateUpdatedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default task counts", () => {
+    const event = {
+      type: "gsd_state_updated",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    const parsed = GsdStateUpdatedEventSchema.parse(event);
+    expect(parsed.tasks_completed).toBe(0);
+    expect(parsed.tasks_remaining).toBe(0);
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_state_updated",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    const validTypes = ["gsd_state_updated"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdStateUpdatedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_state_update",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    expect(() => GsdStateUpdatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates current_phase and current_wave bounds", () => {
+    const baseEvent = {
+      type: "gsd_state_updated",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+
+    expect(() =>
+      GsdStateUpdatedEventSchema.parse({ ...baseEvent, current_phase: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdStateUpdatedEventSchema.parse({ ...baseEvent, current_phase: 0 }),
+    ).toThrow();
+
+    expect(() =>
+      GsdStateUpdatedEventSchema.parse({ ...baseEvent, current_wave: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdStateUpdatedEventSchema.parse({ ...baseEvent, current_wave: 0 }),
+    ).toThrow();
+  });
+
+  it("validates non-negative task counts", () => {
+    const baseEvent = {
+      type: "gsd_state_updated",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+
+    expect(() =>
+      GsdStateUpdatedEventSchema.parse({
+        ...baseEvent,
+        tasks_completed: 0,
+        tasks_remaining: 0,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdStateUpdatedEventSchema.parse({
+        ...baseEvent,
+        tasks_completed: -1,
+        tasks_remaining: 0,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects missing project_key", () => {
+    const event = {
+      type: "gsd_state_updated",
+      timestamp: Date.now(),
+    };
+    expect(() => GsdStateUpdatedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_state_updated",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+    };
+    expect(() => GsdStateUpdatedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdCheckpointGateEventSchema", () => {
+  it("validates a complete gsd_checkpoint_gate event", () => {
+    const event = {
+      type: "gsd_checkpoint_gate",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      gate_type: "human-verify",
+      description: "Confirm readiness",
+      response: "approved",
+    };
+    expect(() => GsdCheckpointGateEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates gate_type enum values", () => {
+    const validGateTypes = ["human-verify", "decision", "human-action"];
+    for (const gate_type of validGateTypes) {
+      const event = {
+        type: "gsd_checkpoint_gate",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        gate_type,
+        description: "Confirm",
+      };
+      expect(() => GsdCheckpointGateEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid gate_type value", () => {
+    const event = {
+      type: "gsd_checkpoint_gate",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      gate_type: "invalid",
+      description: "Confirm",
+    };
+    expect(() => GsdCheckpointGateEventSchema.parse(event)).toThrow();
+  });
+
+  it("rejects missing description", () => {
+    const event = {
+      type: "gsd_checkpoint_gate",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      gate_type: "decision",
+    };
+    expect(() => GsdCheckpointGateEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_checkpoint_gate",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      gate_type: "decision",
+      description: "Confirm",
+    };
+    expect(() => GsdCheckpointGateEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("GsdRoadmapPhaseStartedEventSchema", () => {
+  it("validates a complete gsd_roadmap_phase_started event", () => {
+    const event = {
+      type: "gsd_roadmap_phase_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      phase_num: 1,
+      phase_name: "Foundation",
+      epic_id: "epic-123",
+      acceptance_criteria: ["All tests pass"],
+    };
+    expect(() => GsdRoadmapPhaseStartedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "gsd_roadmap_phase_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      phase_num: 1,
+      phase_name: "Foundation",
+    };
+    const validTypes = ["gsd_roadmap_phase_started"];
+    for (const type of validTypes) {
+      expect(() =>
+        GsdRoadmapPhaseStartedEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "gsd_roadmap_phase_start",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      phase_num: 1,
+      phase_name: "Foundation",
+    };
+    expect(() => GsdRoadmapPhaseStartedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates phase_num bounds", () => {
+    const baseEvent = {
+      type: "gsd_roadmap_phase_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      phase_name: "Foundation",
+    };
+
+    expect(() =>
+      GsdRoadmapPhaseStartedEventSchema.parse({ ...baseEvent, phase_num: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      GsdRoadmapPhaseStartedEventSchema.parse({ ...baseEvent, phase_num: 0 }),
+    ).toThrow();
+  });
+
+  it("rejects missing phase_name", () => {
+    const event = {
+      type: "gsd_roadmap_phase_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      phase_num: 1,
+    };
+    expect(() => GsdRoadmapPhaseStartedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "gsd_roadmap_phase_started",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      phase_num: 1,
+      phase_name: "Foundation",
+    };
+    expect(() => GsdRoadmapPhaseStartedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+// ============================================================================
+// Queen/Worker Protocol Events Tests (Cortex)
+// ============================================================================
+
+describe("QueenDecisionMadeEventSchema", () => {
+  it("validates a complete queen_decision_made event", () => {
+    const event = {
+      type: "queen_decision_made",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      decision_type: "assign_task",
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      rationale: "Assigning task",
+    };
+    expect(() => QueenDecisionMadeEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates decision_type enum values", () => {
+    const validDecisionTypes = [
+      "approve_discovery",
+      "reject_discovery",
+      "resolve_conflict",
+      "promote_learning",
+      "assign_task",
+    ];
+    for (const decision_type of validDecisionTypes) {
+      const event = {
+        type: "queen_decision_made",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        epic_id: "epic-123",
+        decision_type,
+      };
+      expect(() => QueenDecisionMadeEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid decision_type value", () => {
+    const event = {
+      type: "queen_decision_made",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      decision_type: "invalid",
+    };
+    expect(() => QueenDecisionMadeEventSchema.parse(event)).toThrow();
+  });
+
+  it("rejects missing epic_id", () => {
+    const event = {
+      type: "queen_decision_made",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      decision_type: "assign_task",
+    };
+    expect(() => QueenDecisionMadeEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "queen_decision_made",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      decision_type: "assign_task",
+    };
+    expect(() => QueenDecisionMadeEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("QueenReviewCompletedEventSchema", () => {
+  it("validates a complete queen_review_completed event", () => {
+    const event = {
+      type: "queen_review_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      verdict: "approved",
+      issues: ["Missing tests"],
+      attempt_number: 2,
+    };
+    expect(() => QueenReviewCompletedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default attempt_number", () => {
+    const event = {
+      type: "queen_review_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      verdict: "approved",
+    };
+    const parsed = QueenReviewCompletedEventSchema.parse(event);
+    expect(parsed.attempt_number).toBe(1);
+  });
+
+  it("validates verdict enum values", () => {
+    const validVerdicts = ["approved", "needs_changes", "blocked"];
+    for (const verdict of validVerdicts) {
+      const event = {
+        type: "queen_review_completed",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        epic_id: "epic-123",
+        bead_id: "bd-123",
+        worker_id: "worker-1",
+        verdict,
+      };
+      expect(() => QueenReviewCompletedEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid verdict value", () => {
+    const event = {
+      type: "queen_review_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      verdict: "invalid",
+    };
+    expect(() => QueenReviewCompletedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates attempt_number bounds", () => {
+    const baseEvent = {
+      type: "queen_review_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      verdict: "approved",
+    };
+
+    expect(() =>
+      QueenReviewCompletedEventSchema.parse({ ...baseEvent, attempt_number: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      QueenReviewCompletedEventSchema.parse({ ...baseEvent, attempt_number: 0 }),
+    ).toThrow();
+  });
+
+  it("rejects missing worker_id", () => {
+    const event = {
+      type: "queen_review_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      bead_id: "bd-123",
+      verdict: "approved",
+    };
+    expect(() => QueenReviewCompletedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "queen_review_completed",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      epic_id: "epic-123",
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      verdict: "approved",
+    };
+    expect(() => QueenReviewCompletedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("QueenLearningPromotedEventSchema", () => {
+  it("validates a complete queen_learning_promoted event", () => {
+    const event = {
+      type: "queen_learning_promoted",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      memory_id: "mem-123",
+      from_tier: "short_term",
+      to_tier: "long_term",
+      reason: "Useful insight",
+      phase_num: 2,
+    };
+    expect(() => QueenLearningPromotedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates tier literal values", () => {
+    const event = {
+      type: "queen_learning_promoted",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      memory_id: "mem-123",
+      from_tier: "short_term",
+      to_tier: "long_term",
+    };
+    expect(() => QueenLearningPromotedEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("rejects invalid tier values", () => {
+    const event = {
+      type: "queen_learning_promoted",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      memory_id: "mem-123",
+      from_tier: "long_term",
+      to_tier: "short_term",
+    };
+    expect(() => QueenLearningPromotedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates phase_num bounds", () => {
+    const baseEvent = {
+      type: "queen_learning_promoted",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      memory_id: "mem-123",
+      from_tier: "short_term",
+      to_tier: "long_term",
+    };
+
+    expect(() =>
+      QueenLearningPromotedEventSchema.parse({ ...baseEvent, phase_num: 1 }),
+    ).not.toThrow();
+
+    expect(() =>
+      QueenLearningPromotedEventSchema.parse({ ...baseEvent, phase_num: 0 }),
+    ).toThrow();
+  });
+
+  it("rejects missing memory_id", () => {
+    const event = {
+      type: "queen_learning_promoted",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      from_tier: "short_term",
+      to_tier: "long_term",
+    };
+    expect(() => QueenLearningPromotedEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "queen_learning_promoted",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      memory_id: "mem-123",
+      from_tier: "short_term",
+      to_tier: "long_term",
+    };
+    expect(() => QueenLearningPromotedEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("WorkerStatusUpdateEventSchema", () => {
+  it("validates a complete worker_status_update event", () => {
+    const event = {
+      type: "worker_status_update",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      status: "in_progress",
+      percent_complete: 50,
+      blockers: ["Waiting on API"],
+      files: ["src/auth.ts"],
+    };
+    expect(() => WorkerStatusUpdateEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates status enum values", () => {
+    const validStatuses = ["in_progress", "stuck", "blocked", "done"];
+    for (const status of validStatuses) {
+      const event = {
+        type: "worker_status_update",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        bead_id: "bd-123",
+        worker_id: "worker-1",
+        status,
+      };
+      expect(() => WorkerStatusUpdateEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid status value", () => {
+    const event = {
+      type: "worker_status_update",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      status: "invalid",
+    };
+    expect(() => WorkerStatusUpdateEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates percent_complete bounds", () => {
+    const baseEvent = {
+      type: "worker_status_update",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      status: "in_progress",
+    };
+
+    expect(() =>
+      WorkerStatusUpdateEventSchema.parse({ ...baseEvent, percent_complete: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      WorkerStatusUpdateEventSchema.parse({ ...baseEvent, percent_complete: 100 }),
+    ).not.toThrow();
+
+    expect(() =>
+      WorkerStatusUpdateEventSchema.parse({ ...baseEvent, percent_complete: -1 }),
+    ).toThrow();
+
+    expect(() =>
+      WorkerStatusUpdateEventSchema.parse({ ...baseEvent, percent_complete: 101 }),
+    ).toThrow();
+  });
+
+  it("rejects missing bead_id", () => {
+    const event = {
+      type: "worker_status_update",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      worker_id: "worker-1",
+      status: "done",
+    };
+    expect(() => WorkerStatusUpdateEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "worker_status_update",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      status: "done",
+    };
+    expect(() => WorkerStatusUpdateEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("WorkerDiscoveryEventSchema", () => {
+  it("validates a complete worker_discovery event", () => {
+    const event = {
+      type: "worker_discovery",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      child_bead_id: "bd-456",
+      discovery_title: "Add docs",
+      suggested_priority: 2,
+      description: "We should add docs",
+    };
+    expect(() => WorkerDiscoveryEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "worker_discovery",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      discovery_title: "Add docs",
+    };
+    const validTypes = ["worker_discovery"];
+    for (const type of validTypes) {
+      expect(() =>
+        WorkerDiscoveryEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "worker_discover",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      discovery_title: "Add docs",
+    };
+    expect(() => WorkerDiscoveryEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates suggested_priority bounds", () => {
+    const baseEvent = {
+      type: "worker_discovery",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      discovery_title: "Add docs",
+    };
+
+    expect(() =>
+      WorkerDiscoveryEventSchema.parse({ ...baseEvent, suggested_priority: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      WorkerDiscoveryEventSchema.parse({ ...baseEvent, suggested_priority: 3 }),
+    ).not.toThrow();
+
+    expect(() =>
+      WorkerDiscoveryEventSchema.parse({ ...baseEvent, suggested_priority: -1 }),
+    ).toThrow();
+
+    expect(() =>
+      WorkerDiscoveryEventSchema.parse({ ...baseEvent, suggested_priority: 4 }),
+    ).toThrow();
+  });
+
+  it("rejects missing discovery_title", () => {
+    const event = {
+      type: "worker_discovery",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+    };
+    expect(() => WorkerDiscoveryEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "worker_discovery",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      discovery_title: "Add docs",
+    };
+    expect(() => WorkerDiscoveryEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("WorkerHelpRequestEventSchema", () => {
+  it("validates a complete worker_help_request event", () => {
+    const event = {
+      type: "worker_help_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "How should we proceed?",
+      what_tried: ["Checked docs"],
+      options: ["Option A", "Option B"],
+      recommendation: "Option A",
+    };
+    expect(() => WorkerHelpRequestEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "worker_help_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "How should we proceed?",
+    };
+    const validTypes = ["worker_help_request"];
+    for (const type of validTypes) {
+      expect(() =>
+        WorkerHelpRequestEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "worker_help",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "How should we proceed?",
+    };
+    expect(() => WorkerHelpRequestEventSchema.parse(event)).toThrow();
+  });
+
+  it("rejects missing question", () => {
+    const event = {
+      type: "worker_help_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+    };
+    expect(() => WorkerHelpRequestEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "worker_help_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "How should we proceed?",
+    };
+    expect(() => WorkerHelpRequestEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("WorkerDecisionRequestEventSchema", () => {
+  it("validates a complete worker_decision_request event", () => {
+    const event = {
+      type: "worker_decision_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "Which approach?",
+      options: ["Option A", "Option B"],
+      pros_cons: "A is faster",
+      recommendation: "Option A",
+    };
+    expect(() => WorkerDecisionRequestEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates type literal value", () => {
+    const baseEvent = {
+      type: "worker_decision_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "Which approach?",
+    };
+    const validTypes = ["worker_decision_request"];
+    for (const type of validTypes) {
+      expect(() =>
+        WorkerDecisionRequestEventSchema.parse({ ...baseEvent, type }),
+      ).not.toThrow();
+    }
+  });
+
+  it("rejects invalid type value", () => {
+    const event = {
+      type: "worker_decision",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "Which approach?",
+    };
+    expect(() => WorkerDecisionRequestEventSchema.parse(event)).toThrow();
+  });
+
+  it("rejects missing question", () => {
+    const event = {
+      type: "worker_decision_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+    };
+    expect(() => WorkerDecisionRequestEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "worker_decision_request",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      question: "Which approach?",
+    };
+    expect(() => WorkerDecisionRequestEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("WorkerLifecycleEventSchema", () => {
+  it("validates a complete worker_lifecycle_event", () => {
+    const event = {
+      type: "worker_lifecycle_event",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      phase: "execute",
+      duration_ms: 1200,
+    };
+    expect(() => WorkerLifecycleEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("validates phase enum values", () => {
+    const validPhases = [
+      "pickup",
+      "orient",
+      "plan",
+      "execute",
+      "verify",
+      "learn",
+      "report",
+      "close",
+    ];
+    for (const phase of validPhases) {
+      const event = {
+        type: "worker_lifecycle_event",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        bead_id: "bd-123",
+        worker_id: "worker-1",
+        phase,
+      };
+      expect(() => WorkerLifecycleEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid phase value", () => {
+    const event = {
+      type: "worker_lifecycle_event",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      phase: "invalid",
+    };
+    expect(() => WorkerLifecycleEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates duration_ms bounds", () => {
+    const baseEvent = {
+      type: "worker_lifecycle_event",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      phase: "plan",
+    };
+
+    expect(() =>
+      WorkerLifecycleEventSchema.parse({ ...baseEvent, duration_ms: 0 }),
+    ).not.toThrow();
+
+    expect(() =>
+      WorkerLifecycleEventSchema.parse({ ...baseEvent, duration_ms: -1 }),
+    ).toThrow();
+  });
+
+  it("rejects missing bead_id", () => {
+    const event = {
+      type: "worker_lifecycle_event",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      worker_id: "worker-1",
+      phase: "plan",
+    };
+    expect(() => WorkerLifecycleEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "worker_lifecycle_event",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      phase: "plan",
+    };
+    expect(() => WorkerLifecycleEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+describe("WorkerGuardrailViolationEventSchema", () => {
+  it("validates a complete worker_guardrail_violation event", () => {
+    const event = {
+      type: "worker_guardrail_violation",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      violation_type: "scope_change",
+      attempted_action: "Tried to edit another bead",
+      blocked: false,
+    };
+    expect(() => WorkerGuardrailViolationEventSchema.parse(event)).not.toThrow();
+  });
+
+  it("applies default blocked", () => {
+    const event = {
+      type: "worker_guardrail_violation",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      violation_type: "scope_change",
+      attempted_action: "Tried to edit another bead",
+    };
+    const parsed = WorkerGuardrailViolationEventSchema.parse(event);
+    expect(parsed.blocked).toBe(true);
+  });
+
+  it("validates violation_type enum values", () => {
+    const validViolationTypes = [
+      "cross_bead_mutation",
+      "epic_creation",
+      "scope_change",
+      "memory_promotion",
+      "reservation_override",
+    ];
+    for (const violation_type of validViolationTypes) {
+      const event = {
+        type: "worker_guardrail_violation",
+        project_key: "/test/project",
+        timestamp: Date.now(),
+        bead_id: "bd-123",
+        worker_id: "worker-1",
+        violation_type,
+        attempted_action: "Test",
+      };
+      expect(() => WorkerGuardrailViolationEventSchema.parse(event)).not.toThrow();
+    }
+  });
+
+  it("rejects invalid violation_type value", () => {
+    const event = {
+      type: "worker_guardrail_violation",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      violation_type: "invalid",
+      attempted_action: "Test",
+    };
+    expect(() => WorkerGuardrailViolationEventSchema.parse(event)).toThrow();
+  });
+
+  it("rejects missing attempted_action", () => {
+    const event = {
+      type: "worker_guardrail_violation",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      violation_type: "scope_change",
+    };
+    expect(() => WorkerGuardrailViolationEventSchema.parse(event)).toThrow();
+  });
+
+  it("validates with optional fields omitted", () => {
+    const event = {
+      type: "worker_guardrail_violation",
+      project_key: "/test/project",
+      timestamp: Date.now(),
+      bead_id: "bd-123",
+      worker_id: "worker-1",
+      violation_type: "scope_change",
+      attempted_action: "Test",
+    };
+    expect(() => WorkerGuardrailViolationEventSchema.parse(event)).not.toThrow();
+  });
+});
+
+// ============================================================================
 // Persistence Verification Tests (libSQL via Drizzle)
 // ============================================================================
 
@@ -1654,7 +4188,9 @@ describe("appendEvent persistence to libSQL", () => {
     expect(appendResult.id).toBeDefined();
     expect(appendResult.sequence).toBeDefined();
     expect(appendResult.type).toBe("agent_registered");
-    expect(appendResult.agent_name).toBe("PersistenceTestAgent");
+    if (appendResult.type === "agent_registered") {
+      expect(appendResult.agent_name).toBe("PersistenceTestAgent");
+    }
 
     // Read back from database to verify persistence
     const readResult = await readEvents(
@@ -1668,7 +4204,9 @@ describe("appendEvent persistence to libSQL", () => {
     expect(readResult).toHaveLength(1);
     expect(readResult[0]?.id).toBe(appendResult.id);
     expect(readResult[0]?.sequence).toBe(appendResult.sequence);
-    expect(readResult[0]?.agent_name).toBe("PersistenceTestAgent");
+    if (readResult[0]?.type === "agent_registered") {
+      expect(readResult[0].agent_name).toBe("PersistenceTestAgent");
+    }
   });
 
   it("verifies database is file-based, not in-memory", async () => {
@@ -1694,7 +4232,9 @@ describe("appendEvent persistence to libSQL", () => {
     );
 
     expect(readResult).toHaveLength(1);
-    expect(readResult[0]?.agent_name).toBe("FilePersistenceAgent");
+    if (readResult[0]?.type === "agent_registered") {
+      expect(readResult[0].agent_name).toBe("FilePersistenceAgent");
+    }
   });
 
   it("appendEvent uses Drizzle ORM, not raw SQL", async () => {
