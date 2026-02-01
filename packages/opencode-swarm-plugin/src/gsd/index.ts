@@ -24,6 +24,7 @@ export type {
   GsdPlan,
   GsdPlanFrontmatter,
   GsdState,
+  MustHaves,
   PlanningDirectoryConfig,
 } from "./gsd-types.js";
 

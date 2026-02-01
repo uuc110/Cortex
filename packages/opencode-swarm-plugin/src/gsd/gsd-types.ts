@@ -156,6 +156,8 @@ export interface GsdPlan {
   autonomous?: boolean;
   plan_number?: string;
   verification?: VerificationResult;
+  must_haves?: MustHaves;
+  research_context?: string;
 }
 
 export interface GsdPlanFrontmatter {
@@ -188,6 +190,12 @@ export interface GsdState {
   decisions?: string[];
   context_notes?: string[];
   completed_at?: string;
+}
+
+export interface MustHaves {
+  truths: string[];
+  artifacts: { path: string; check: GsdArtifactCheckLevel }[];
+  key_links: { from: string; to: string; type: GsdKeyLinkType }[];
 }
 
 export interface PlanningDirectoryConfig {

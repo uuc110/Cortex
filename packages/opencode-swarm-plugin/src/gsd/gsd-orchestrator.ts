@@ -42,6 +42,7 @@ export interface OrchestratorConfig {
   projectKey: string;
   maxFixIterations: number;
   waveTimeoutMs: number;
+  verifyAfterEachWave?: boolean;
 }
 
 export interface GsdOrchestratorDeps {
@@ -105,6 +106,45 @@ async function safeSave(
   try {
     await stateManager.save(state);
   } catch {}
+}
+
+function withWaveTimeout(
+  promise: Promise<TaskDispatchResult[]>,
+  timeoutMs: number,
+  taskIds: string[],
+): Promise<TaskDispatchResult[]> {
+  if (timeoutMs <= 0) return promise;
+
+  return new Promise<TaskDispatchResult[]>((resolve) => {
+    const timer = setTimeout(() => {
+      resolve(
+        taskIds.map((id) => ({
+          taskId: id,
+          success: false,
+          filesModified: [] as string[],
+          error: `Wave timeout exceeded (${timeoutMs}ms)`,
+        })),
+      );
+    }, timeoutMs);
+
+    promise.then(
+      (results) => {
+        clearTimeout(timer);
+        resolve(results);
+      },
+      (err) => {
+        clearTimeout(timer);
+        resolve(
+          taskIds.map((id) => ({
+            taskId: id,
+            success: false,
+            filesModified: [] as string[],
+            error: err instanceof Error ? err.message : String(err),
+          })),
+        );
+      },
+    );
+  });
 }
 
 export function createGsdOrchestrator(
@@ -174,7 +214,11 @@ export function createGsdOrchestrator(
       }),
     );
 
-    const results = await dispatchWaveTasks(waveTasks, dispatcher);
+    const results = await withWaveTimeout(
+      dispatchWaveTasks(waveTasks, dispatcher),
+      config.waveTimeoutMs,
+      waveTasks.map((t) => t.id),
+    );
 
     const completedTasks: string[] = [];
     const failedTasks: string[] = [];
@@ -468,6 +512,52 @@ export function createGsdOrchestrator(
       };
 
       await safeSave(stateManager, state);
+
+      // Wave-level verification (if enabled)
+      if (config.verifyAfterEachWave && plan.verification) {
+        const waveVerification = verificationEngine.verify(
+          plan,
+          buildTaskResults(state),
+        );
+        if (!verificationEngine.isFullyVerified(waveVerification)) {
+          const waveFailures = extractFailures(waveVerification);
+          const fixTasks = verificationEngine.generateFixPlan(waveFailures);
+          if (fixTasks.length > 0) {
+            await safeEmit(
+              emitEvent,
+              gsdFixPlanGenerated(makeEventBase(config.projectKey), {
+                source_verification: `wave-${wave.wave_number}`,
+                fix_tasks: fixTasks.map((t) => t.id),
+              }),
+            );
+
+            const fixResults = await dispatchWaveTasks(fixTasks, dispatcher);
+            for (const result of fixResults) {
+              if (
+                result.success &&
+                !state.completed_tasks.includes(result.taskId)
+              ) {
+                state = {
+                  ...state,
+                  completed_tasks: [...state.completed_tasks, result.taskId],
+                  last_updated: new Date().toISOString(),
+                };
+              }
+            }
+
+            await safeEmit(
+              emitEvent,
+              gsdFixPlanCompleted(makeEventBase(config.projectKey), {
+                fix_tasks: fixTasks.map((t) => t.id),
+                re_verification_passed: fixResults.every((r) => r.success),
+              }),
+            );
+
+            await safeSave(stateManager, state);
+          }
+        }
+      }
+
       wavesCompleted++;
     }
 

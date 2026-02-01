@@ -10,6 +10,9 @@ import type {
   GsdTaskStatus,
   GsdTaskPriority,
   GsdTaskType,
+  MustHaves,
+  GsdArtifactCheckLevel,
+  GsdKeyLinkType,
 } from "./gsd-types.js";
 
 import {
@@ -19,6 +22,8 @@ import {
   isGsdTaskStatus,
   isGsdTaskPriority,
   isGsdTaskType,
+  isGsdArtifactCheckLevel,
+  isGsdKeyLinkType,
 } from "./gsd-types.js";
 
 export interface GeneratePlanOptions {
@@ -35,6 +40,8 @@ export interface GeneratePlanOptions {
   depends_on?: string[];
   autonomous?: boolean;
   created?: string;
+  must_haves?: MustHaves;
+  research_context?: string;
 }
 
 export interface ValidationResult {
@@ -174,11 +181,50 @@ function generateTasksSection(tasks: GsdTask[]): string {
   return lines.join("\n");
 }
 
+function generateMustHavesSection(mustHaves: MustHaves): string {
+  const lines: string[] = ["<must_haves>"];
+
+  lines.push("<truths>");
+  for (const truth of mustHaves.truths) {
+    lines.push(`<truth>${truth}</truth>`);
+  }
+  lines.push("</truths>");
+
+  lines.push("<artifacts>");
+  for (const artifact of mustHaves.artifacts) {
+    lines.push(`<artifact path="${artifact.path}" check="${artifact.check}" />`);
+  }
+  lines.push("</artifacts>");
+
+  lines.push("<key_links>");
+  for (const link of mustHaves.key_links) {
+    lines.push(`<key_link from="${link.from}" to="${link.to}" type="${link.type}" />`);
+  }
+  lines.push("</key_links>");
+
+  lines.push("</must_haves>");
+  return lines.join("\n");
+}
+
+function generateResearchContextSection(context: string): string {
+  return `<research_context>\n${context}\n</research_context>`;
+}
+
 export function generatePlan(tasks: GsdTask[], options: GeneratePlanOptions): string {
   const frontmatter = generateFrontmatter(tasks, options);
   const tasksSection = generateTasksSection(tasks);
 
-  return `${frontmatter}\n\n${tasksSection}\n`;
+  let output = `${frontmatter}\n\n${tasksSection}\n`;
+
+  if (options.must_haves) {
+    output += `\n${generateMustHavesSection(options.must_haves)}\n`;
+  }
+
+  if (options.research_context) {
+    output += `\n${generateResearchContextSection(options.research_context)}\n`;
+  }
+
+  return output;
 }
 
 function parseFrontmatter(content: string): {
@@ -378,6 +424,54 @@ function deriveWaves(tasks: GsdTask[]): GsdWave[] {
   return waves;
 }
 
+function parseMustHaves(body: string): MustHaves | undefined {
+  const mustHavesMatch = body.match(/<must_haves>([\s\S]*?)<\/must_haves>/);
+  if (!mustHavesMatch) return undefined;
+
+  const content = mustHavesMatch[1];
+
+  const truths: string[] = [];
+  const truthRegex = /<truth>([\s\S]*?)<\/truth>/g;
+  let tMatch: RegExpExecArray | null = truthRegex.exec(content);
+  while (tMatch !== null) {
+    truths.push(tMatch[1].trim());
+    tMatch = truthRegex.exec(content);
+  }
+
+  const artifacts: MustHaves["artifacts"] = [];
+  const artifactRegex = /<artifact\s+path="([^"]*)"\s+check="([^"]*)"\s*\/>/g;
+  let aMatch: RegExpExecArray | null = artifactRegex.exec(content);
+  while (aMatch !== null) {
+    const check = aMatch[2];
+    if (isGsdArtifactCheckLevel(check)) {
+      artifacts.push({ path: aMatch[1], check });
+    }
+    aMatch = artifactRegex.exec(content);
+  }
+
+  const key_links: MustHaves["key_links"] = [];
+  const linkRegex = /<key_link\s+from="([^"]*)"\s+to="([^"]*)"\s+type="([^"]*)"\s*\/>/g;
+  let lMatch: RegExpExecArray | null = linkRegex.exec(content);
+  while (lMatch !== null) {
+    const linkType = lMatch[3];
+    if (isGsdKeyLinkType(linkType)) {
+      key_links.push({ from: lMatch[1], to: lMatch[2], type: linkType });
+    }
+    lMatch = linkRegex.exec(content);
+  }
+
+  if (truths.length === 0 && artifacts.length === 0 && key_links.length === 0) {
+    return undefined;
+  }
+
+  return { truths, artifacts, key_links };
+}
+
+function parseResearchContext(body: string): string | undefined {
+  const match = body.match(/<research_context>([\s\S]*?)<\/research_context>/);
+  return match ? match[1].trim() || undefined : undefined;
+}
+
 export function parsePlan(markdown: string): GsdPlan {
   if (!markdown || markdown.trim().length === 0) {
     throw new Error("Cannot parse empty PLAN.md content");
@@ -458,6 +552,12 @@ export function parsePlan(markdown: string): GsdPlan {
   if (typeof planNumber === "string") {
     plan.plan_number = planNumber;
   }
+
+  const mustHaves = parseMustHaves(body);
+  if (mustHaves) plan.must_haves = mustHaves;
+
+  const researchContext = parseResearchContext(body);
+  if (researchContext) plan.research_context = researchContext;
 
   return plan;
 }

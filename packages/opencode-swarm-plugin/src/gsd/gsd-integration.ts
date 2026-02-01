@@ -19,6 +19,7 @@ export interface GsdIntegrationConfig {
   stateManager: StateManager;
   maxFixIterations?: number;
   waveTimeoutMs?: number;
+  verifyAfterEachWave?: boolean;
   projectPath?: string;
 }
 
@@ -47,6 +48,7 @@ export function createGsdIntegration(
     projectKey: config.projectKey,
     maxFixIterations: config.maxFixIterations ?? DEFAULT_GSD_CONFIG.maxFixIterations,
     waveTimeoutMs: config.waveTimeoutMs ?? DEFAULT_GSD_CONFIG.waveTimeoutMs,
+    verifyAfterEachWave: config.verifyAfterEachWave ?? false,
   };
 
   let cached: InitGsdResult | null = null;
