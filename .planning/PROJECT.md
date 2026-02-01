@@ -96,13 +96,13 @@ apps/
 
 ## Phases
 
-| Phase | Name | Goal | Effort |
-|-------|------|------|--------|
-| 1 | Fork & Stabilize | Fork, rename, verify builds, add event types, schema migration | Week 1 |
-| 2 | Memory Enhancement | Backport Cortex memory improvements into hivemind | Week 1-2 |
-| 3 | Beads Bridge | Bridge `bd` CLI into swarm orchestration | Week 2-3 |
-| 4 | GSD Integration | Add structured execution (plans, waves, verification) | Week 3-4 |
-| 5 | Queen/Worker Protocol | Port Cortex's formal coordination protocol | Week 4-5 |
+| Phase | Name | Goal | Effort | Status |
+|-------|------|------|--------|--------|
+| 1 | Fork & Stabilize | Fork, rename, verify builds, add event types, schema migration | Week 1 | ✅ Complete |
+| 2 | Memory Enhancement | Backport Cortex memory improvements into hivemind | Week 1-2 | ✅ Complete |
+| 3 | Beads Bridge | Bridge `bd` CLI into swarm orchestration | Week 2-3 | ✅ Complete |
+| 4 | GSD Integration | Add structured execution (plans, waves, verification) | Week 3-4 | 🔧 In Progress |
+| 5 | Queen/Worker Protocol | Port Cortex's formal coordination protocol | Week 4-5 | ⏳ Not Started |
 
 ## Planning Docs
 

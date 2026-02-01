@@ -13,5 +13,13 @@
   "project": "cortex",
   "upstream": "joelhooks/swarm-tools",
   "phases": 5,
-  "currentPhase": 1
+  "currentPhase": 4,
+  "completedPhases": [1, 2, 3],
+  "phaseStatus": {
+    "1": "complete",
+    "2": "complete",
+    "3": "complete",
+    "4": "in_progress",
+    "5": "pending"
+  }
 }
