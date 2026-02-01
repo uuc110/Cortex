@@ -49,6 +49,7 @@ import { mandateTools } from "./mandates";
 import { hivemindTools } from "./hivemind-tools";
 import { observabilityTools } from "./observability-tools";
 import { researchTools } from "./swarm-research";
+import { cortexTools } from "./cortex";
 // NOTE: evalTools removed from main bundle - evalite is a devDependency
 // Use `bunx evalite run` directly for running evals
 // import { evalTools } from "./eval-runner";
@@ -184,6 +185,7 @@ const SwarmPlugin: Plugin = async (
       ...researchTools,
       // evalTools removed - evalite is devDependency, use `bunx evalite run` directly
       ...contributorTools,
+      ...cortexTools,
     },
 
     /**

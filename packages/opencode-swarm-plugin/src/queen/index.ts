@@ -96,3 +96,14 @@ export type {
 } from "./phase-verifier.js";
 
 export { createPhaseVerifier } from "./phase-verifier.js";
+
+// ─── Cortex Coordinator ──────────────────────────────────────────
+export type {
+  CortexCoordinatorConfig,
+  CortexCoordinatorDeps,
+  CortexCoordinatorResult,
+  CortexCoordinator,
+  ResearchResult as CortexResearchResult,
+} from "./cortex-coordinator.js";
+
+export { createCortexCoordinator } from "./cortex-coordinator.js";
