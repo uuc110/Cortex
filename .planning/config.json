@@ -1,0 +1,17 @@
+{
+  "mode": "interactive",
+  "depth": "adaptive",
+  "depthRules": {
+    "bug": "quick",
+    "chore": "quick",
+    "task": "standard",
+    "feature": "comprehensive",
+    "epic": "comprehensive"
+  },
+  "created": "2026-02-01T03:50:00.000Z",
+  "version": "1.0",
+  "project": "cortex",
+  "upstream": "joelhooks/swarm-tools",
+  "phases": 5,
+  "currentPhase": 1
+}
